@@ -69,6 +69,6 @@ jobs:
           aws ecr describe-images \
             --repository-name ${{ env.REPO_NAME }} \
             --image-ids imageTag=${{ github.sha }} \
-            --endpoint-url ${{ env.ECR_FIPS_ENDPOINT }}
+            --endpoint-url https://ecr-fips.us-east-1.amazonaws.com 
 
     
