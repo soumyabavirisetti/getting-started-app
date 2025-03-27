@@ -9,6 +9,7 @@ env:
   AWS_REGION: us-east-1
   REPO_NAME: hello
   AWS_USE_FIPS_ENDPOINT: "true"
+  AWS_ACCOUNT_ID: 025482195245
 
 jobs:
   deploy:
@@ -35,13 +36,13 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         run: |
-          aws ecr get-login-password --region $AWS_REGION --endpoint-url https://ecr-fips.$AWS_REGION.amazonaws.com | docker login --username AWS --password-stdin https://ecr-fips.$AWS_REGION.amazonaws.com
+          aws ecr get-login-password --region $AWS_REGION --endpoint-url https://ecr-fips.$AWS_REGION.amazonaws.com | docker login --username AWS --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr-fips.${AWS_REGION}.amazonaws.com"
           
 
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
         env:
-          ECR_FIPS_REGISTRY: ecr-fips.${{ env.AWS_REGION }}.amazonaws.com
+          ECR_FIPS_REGISTRY: "${AWS_ACCOUNT_ID}.dkr.ecr-fips.${AWS_REGION}.amazonaws.com"
           IMAGE_TAG: ${{ github.sha }}
         run: |
           
