@@ -36,22 +36,38 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         run: |
-          aws ecr get-login-password --region $AWS_REGION --endpoint-url https://ecr-fips.$AWS_REGION.amazonaws.com | docker login --username AWS --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr-fips.${AWS_REGION}.amazonaws.com"
+          # Set the registry URL
+          ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr-fips.${AWS_REGION}.amazonaws.com"
+          echo "registry=${ECR_REGISTRY}" >> $GITHUB_OUTPUT
+          
+          # Login to ECR
+          aws ecr get-login-password \
+            --region ${{ env.AWS_REGION }} \
+            --endpoint-url ${{ env.ECR_FIPS_ENDPOINT }} | \
+          docker login \
+            --username AWS \
+            --password-stdin ${ECR_REGISTRY}
           
 
       - name: Build, tag, and push image to Amazon ECR
-        id: build-image
-        env:
-          ECR_FIPS_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
         run: |
+          # Set the full image name
+          IMAGE_URI="${{ env.AWS_ACCOUNT_ID }}.dkr.ecr-fips.${{ env.AWS_REGION }}.amazonaws.com/${{ env.REPO_NAME }}:${{ github.sha }}"
           
           # Build the Docker image
-          docker build -t $ECR_FIPS_REGISTRY/$REPO_NAME:$IMAGE_TAG .
+          docker build -t ${IMAGE_URI} .
           
           # Push using FIPS endpoint
-          docker push $ECR_FIPS_REGISTRY/$REPO_NAME:$IMAGE_TAG
+          docker push ${IMAGE_URI}
           
-          echo "image=$ECR_FIPS_REGISTRY/$REPO_NAME:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          # Save the image URI for later use
+          echo "image=${IMAGE_URI}" >> $GITHUB_OUTPUT
+
+      - name: Verify Push
+        run: |
+          aws ecr describe-images \
+            --repository-name ${{ env.REPO_NAME }} \
+            --image-ids imageTag=${{ github.sha }} \
+            --endpoint-url ${{ env.ECR_FIPS_ENDPOINT }}
 
     
