@@ -10,6 +10,7 @@ env:
   REPO_NAME: hello
   AWS_USE_FIPS_ENDPOINT: "true"
   AWS_ACCOUNT_ID: "025482195245"
+  ECR_FIPS_ENDPOINT: "https://ecr-fips.us-east-1.amazonaws.com"
 
 jobs:
   deploy:
