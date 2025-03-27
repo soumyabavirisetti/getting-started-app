@@ -44,7 +44,7 @@ jobs:
           # Login to ECR
           aws ecr get-login-password \
             --region ${{ env.AWS_REGION }} \
-            --endpoint-url ${{ env.ECR_FIPS_ENDPOINT }} | \
+            --endpoint-url https://ecr-fips.us-east-1.amazonaws.com | \
           docker login \
             --username AWS \
             --password-stdin ${ECR_REGISTRY}
