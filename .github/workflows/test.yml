@@ -7,7 +7,8 @@ on:
 
 env:
   AWS_REGION: us-east-1                 # set this to your preferred AWS region, e.g. us-west-1
-  REPO_NAME: hello          # set this to your Amazon ECR repository name
+  REPO_NAME: hello  
+  AWS_USE_FIPS_ENDPOINT: "true" 
 
 jobs:
   deploy:
