@@ -6,10 +6,10 @@ on:
       - main
 
 env:
-  AWS_REGION: us-east-1                 # set this to your preferred AWS region, e.g. us-west-1
+  AWS_REGION: us-east-1
   REPO_NAME: hello
-  AWS_USE_FIPS_ENDPOINT: "true"   
-  ECR_FIPS_ENDPOINT: "https://ecr-fips.us-east-1.amazonaws.com"     
+  AWS_USE_FIPS_ENDPOINT: "true"
+  ECR_FIPS_ENDPOINT: "https://ecr-fips.us-east-1.amazonaws.com"
 
 jobs:
   deploy:
@@ -30,9 +30,25 @@ jobs:
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@62f4f872db3836360b72999f4b87f1ff13310f3a
-        with:
-          registry-endpoint: ${{ env.ECR_FIPS_ENDPOINT }}
+        run: |
+          # Get ECR login token using FIPS endpoint
+          token=$(aws ecr get-login-password --endpoint-url ${{ env.ECR_FIPS_ENDPOINT }})
+          echo "::set-output name=registry::${{ env.AWS_ACCOUNT_ID }}.dkr.ecr-fips.${{ env.AWS_REGION }}.amazonaws.com"
+          echo $token | docker login --username AWS --password-stdin ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr-fips.${{ env.AWS_REGION }}.amazonaws.com
+
+      - name: Configure Docker for FIPS
+        run: |
+          mkdir -p $HOME/.docker
+          echo '{
+            "credHelpers": {
+              "${{ steps.login-ecr.outputs.registry }}": "ecr-login"
+            },
+            "endpoints": {
+              "${{ steps.login-ecr.outputs.registry }}": {
+                "url": "${{ env.ECR_FIPS_ENDPOINT }}"
+              }
+            }
+          }' > $HOME/.docker/config.json
 
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
@@ -40,9 +56,28 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          # Build a docker container and
-          # push it to ECR so that it can
-          # be deployed to ECS.
+          # Configure AWS CLI to use FIPS endpoint for ECR
+          aws configure set default.ecr.endpoint-url ${{ env.ECR_FIPS_ENDPOINT }}
+          
+          # Build the Docker image
           docker build -t $ECR_REGISTRY/$REPO_NAME:$IMAGE_TAG .
+          
+          # Push using FIPS endpoint
           docker push $ECR_REGISTRY/$REPO_NAME:$IMAGE_TAG
+          
+          # Verify image push using FIPS endpoint
+          aws ecr describe-images \
+            --repository-name $REPO_NAME \
+            --image-ids imageTag=$IMAGE_TAG \
+            --endpoint-url ${{ env.ECR_FIPS_ENDPOINT }}
+          
           echo "image=$ECR_REGISTRY/$REPO_NAME:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Verify FIPS Compliance
+        run: |
+          # Test ECR connection using FIPS endpoint
+          aws ecr describe-repositories \
+            --endpoint-url ${{ env.ECR_FIPS_ENDPOINT }}
+          
+          # Show Docker info
+          docker info
