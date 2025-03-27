@@ -9,7 +9,7 @@ env:
   AWS_REGION: us-east-1
   REPO_NAME: hello
   AWS_USE_FIPS_ENDPOINT: "true"
-  AWS_ACCOUNT_ID: 025482195245
+  AWS_ACCOUNT_ID: "025482195245"
 
 jobs:
   deploy:
